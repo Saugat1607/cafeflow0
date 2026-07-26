@@ -3,77 +3,62 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreMenuItemRequest;
+use App\Http\Requests\updateMenuItemRequest;
 use App\Models\MenuItem;
-use Illuminate\Http\Request;
+use App\Services\MenuItemService;
 use Illuminate\Http\JsonResponse;
+
 
 class MenuItemController extends Controller
 {
-    /**
-     * Display all menu items.
-     */
+    public function __construct(
+        protected MenuItemService $menuItemService
+    ) {}
+
     public function index(): JsonResponse
+
     {
         try {
-            $menuItems = MenuItem::orderBy('category')
-                ->orderBy('name')
-                ->get();
+            $menuItems = $this->menuItemService->index();
 
-            return response()->json([
+            return response() ->json([
                 'success' => true,
                 'message' => 'Menu items fetched successfully.',
-                'data' => $menuItems,
+                'data' => $menuItems
             ], 200);
 
         } catch (\Exception $e) {
-
             return response()->json([
-                'success' => false,
+                'success'=> false,
                 'message' => 'Failed to fetch menu items.',
-                'error' => $e->getMessage(),
-            ], 500);
+                'error' => $e->getMessage()
+                ],500);
         }
+
     }
 
-    /**
-     * Store a new menu item.
-     */
-    public function store(Request $request): JsonResponse
+    // store a new item
+    public function store(StoreMenuItemRequest $request): JsonResponse
     {
         try {
-
-            $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'category' => 'required|string|max:255',
-                'price' => 'required|numeric|min:0|max:9999.99',
-                'is_available' => 'nullable|boolean',
-            ]);
-
-            if (!isset($validated['is_available'])) {
-                $validated['is_available'] = true;
-            }
-
-            $menuItem = MenuItem::create($validated);
-
+ $menuItem = $this->menuItemService->create($request->validated());
             return response()->json([
                 'success' => true,
                 'message' => 'Menu item created successfully.',
-                'data' => $menuItem,
+                'data' => $menuItem
             ], 201);
 
         } catch (\Exception $e) {
-
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create menu item.',
-                'error' => $e->getMessage(),
+                'error' => $e->getMessage()
             ], 500);
         }
-    }
 
-    /**
-     * Display a single menu item.
-     */
+    }
+    //show a specific item
     public function show(MenuItem $menu): JsonResponse
     {
         return response()->json([
@@ -82,62 +67,41 @@ class MenuItemController extends Controller
         ], 200);
     }
 
-    /**
-     * Update a menu item.
-     */
-    public function update(Request $request, MenuItem $menu): JsonResponse
+    //update a menu
+
+    public function update(updateMenuItemRequest $request, MenuItem $menuItem): JsonResponse
     {
         try {
-
-            $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'category' => 'required|string|max:255',
-                'price' => 'required|numeric|min:0|max:9999.99',
-                'is_available' => 'nullable|boolean',
-            ]);
-
-            if (isset($validated['is_available'])) {
-                $validated['is_available'] = $request->boolean('is_available');
-            }
-
-            $menu->update($validated);
-
+            $menuItem = $this->menuItemService->update($menuItem, $request->validated());
             return response()->json([
                 'success' => true,
                 'message' => 'Menu item updated successfully.',
-                'data' => $menu->fresh(),
+                'data' => $menuItem
             ], 200);
-
         } catch (\Exception $e) {
-
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update menu item.',
-                'error' => $e->getMessage(),
+                'error' => $e->getMessage()
             ], 500);
         }
     }
 
-    /**
-     * Delete a menu item.
-     */
-    public function destroy(MenuItem $menu): JsonResponse
+    //delete a menu item
+
+    public function destroy(MenuItem $menuItem): JsonResponse
     {
         try {
-
-            $menu->delete();
-
+            $this->menuItemService->delete($menuItem);
             return response()->json([
                 'success' => true,
-                'message' => 'Menu item deleted successfully.',
+                'message' => 'Menu item deleted successfully.'
             ], 200);
-
         } catch (\Exception $e) {
-
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to delete menu item.',
-                'error' => $e->getMessage(),
+                'error' => $e->getMessage()
             ], 500);
         }
     }
