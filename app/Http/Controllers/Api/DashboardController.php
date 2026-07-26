@@ -4,23 +4,21 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\RestaurantTable;
+use App\Services\DashboardService;
 use Illuminate\Http\JsonResponse;
 
 class DashboardController extends Controller
 {
+    public function __construct(
+        protected DashboardService $dashboardService
+     ) {
+    }
 
     public function index(): JsonResponse
     {
         try {
+            $tables = $this->dashboardService->getDashboardData();
 
-            $tables = RestaurantTable::with([
-                'orders' => function ($query) {
-                    $query->whereNotIn('status', ['paid', 'cancelled'])
-                          ->with('items.menuItem');
-                }
-            ])
-            ->orderBy('name')
-            ->get();
 
             return response()->json([
                 'success' => true,
