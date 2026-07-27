@@ -3,12 +3,18 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\RestaurantTableRequest;
 use App\Models\RestaurantTable;
-use Illuminate\Http\Request;
+use App\Services\RestaurantTableService;
 use Illuminate\Http\JsonResponse;
+use RuntimeException;
 
 class RestaurantTableController extends Controller
 {
+    public function __construct(
+        protected RestaurantTableService $restaurantTableService
+    ) {}
+
     /**
      * Display all restaurant tables.
      */
@@ -16,7 +22,7 @@ class RestaurantTableController extends Controller
     {
         try {
 
-            $tables = RestaurantTable::orderBy('name')->get();
+            $tables = $this->restaurantTableService->getAllTables();
 
             return response()->json([
                 'success' => true,
@@ -38,18 +44,11 @@ class RestaurantTableController extends Controller
     /**
      * Store a new table.
      */
-    public function store(Request $request): JsonResponse
+    public function store(RestaurantTableRequest $request): JsonResponse
     {
         try {
 
-            $validated = $request->validate([
-                'name' => 'required|string|max:255|unique:restaurant_tables,name',
-                'seats' => 'required|integer|min:1|max:50',
-            ]);
-
-            $validated['status'] = 'available';
-
-            $table = RestaurantTable::create($validated);
+            $table = $this->restaurantTableService->createTable($request->validated());
 
             return response()->json([
                 'success' => true,
@@ -75,9 +74,7 @@ class RestaurantTableController extends Controller
     {
         try {
 
-            $table->load([
-                'orders.items.menuItem'
-            ]);
+            $table = $this->restaurantTableService->getTableWithOrders($table);
 
             return response()->json([
                 'success' => true,
@@ -98,22 +95,16 @@ class RestaurantTableController extends Controller
     /**
      * Update a table.
      */
-    public function update(Request $request, RestaurantTable $table): JsonResponse
+    public function update(RestaurantTableRequest $request, RestaurantTable $table): JsonResponse
     {
         try {
 
-            $validated = $request->validate([
-                'name' => 'required|string|max:255|unique:restaurant_tables,name,' . $table->id,
-                'seats' => 'required|integer|min:1|max:50',
-                'status' => 'required|in:available,occupied,reserved',
-            ]);
-
-            $table->update($validated);
+            $table = $this->restaurantTableService->updateTable($table, $request->validated());
 
             return response()->json([
                 'success' => true,
                 'message' => 'Table updated successfully.',
-                'data' => $table->fresh()
+                'data' => $table
             ], 200);
 
         } catch (\Exception $e) {
@@ -134,19 +125,19 @@ class RestaurantTableController extends Controller
     {
         try {
 
-            if ($table->orders()->whereNotIn('status', ['paid', 'cancelled'])->exists()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cannot delete a table with an active order.'
-                ], 409);
-            }
-
-            $table->delete();
+            $this->restaurantTableService->deleteTable($table);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Table deleted successfully.'
             ], 200);
+
+        } catch (RuntimeException $e) {
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 409);
 
         } catch (\Exception $e) {
 

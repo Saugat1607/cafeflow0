@@ -15,12 +15,11 @@ class MenuItemService
     }
 //create
 
-   public function create()
-    {
-        $data['is_available'] = $data['is_available'] ?? true;
-        return MenuItem::create($data);
-    }
-
+public function create(array $data)
+{
+    $data['is_available'] = $data['is_available'] ?? true;
+    return MenuItem::create($data);
+}
     //update
   public function update(MenuItem $menuItem, array $data): MenuItem
     {
