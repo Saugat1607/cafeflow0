@@ -20,11 +20,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('tables', RestaurantTableController::class);
     Route::apiResource('menu', MenuItemController::class);
+Route::get('/tables/{table}/order/create', [OrderController::class, 'create']);
 
-    Route::get('/orders', [OrderController::class, 'index']);
-    Route::post('/orders', [OrderController::class, 'store']);
-    Route::get('/orders/{order}', [OrderController::class, 'show']);
-    Route::patch('/orders/{order}/status', [OrderController::class, 'updateStatus']);
-    Route::delete('/orders/{order}', [OrderController::class, 'destroy']);
-    Route::get('/tables/{table}/orders', [OrderController::class, 'forTable']);
+Route::get('/orders', [OrderController::class, 'index']);
+Route::post('/orders', [OrderController::class, 'store']);
+Route::get('/orders/{order}', [OrderController::class, 'show']);
+Route::patch('/orders/{order}/status', [OrderController::class, 'updateStatus']);
+Route::delete('/orders/{order}', [OrderController::class, 'destroy']);
+
 });
