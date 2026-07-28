@@ -19,6 +19,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
 
     Route::apiResource('tables', RestaurantTableController::class);
+    //menu
     Route::apiResource('menu', MenuItemController::class);
 Route::get('/tables/{table}/order/create', [OrderController::class, 'create']);
 
