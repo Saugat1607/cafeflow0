@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BillController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\MenuItemController;
 use App\Http\Controllers\Api\OrderController;
@@ -29,4 +30,11 @@ Route::get('/orders/{order}', [OrderController::class, 'show']);
 Route::patch('/orders/{order}/status', [OrderController::class, 'updateStatus']);
 Route::delete('/orders/{order}', [OrderController::class, 'destroy']);
 
+
+//bill
+Route::get('/bills', [BillController::class, 'index']);
+Route::post('/bills', [BillController::class, 'store']);
+Route::get('/bills/{bill}', [BillController::class, 'show']);
+Route::post('/bills/{bill}/pay', [BillController::class, 'pay']);
+Route::delete('/bills/{bill}', [BillController::class, 'destroy']);
 });
