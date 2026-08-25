@@ -4,368 +4,224 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bill;
-use App\Models\BillItem;
-use App\Models\Order;
+use App\Services\BillService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Exception;
 
 class BillController extends Controller
 {
+    protected BillService $billService;
+
+    public function __construct(BillService $billService)
+    {
+        $this->billService = $billService;
+    }
+
     /**
-     * List bills.
-     *
-     * Filters:
-     * date
-     * table
-     * search
+     * Display bills.
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Bill::with([
-            'table',
-            'items',
-        ])->latest('bill_date')->latest('id');
+        try {
 
-        // Filter by date
-        if ($request->filled('date')) {
-            $query->whereDate('bill_date', $request->date);
+            $filters = [
+                'date' =>
+                    $request->date,
+
+                'table_id' =>
+                    $request->table_id,
+
+                'search' =>
+                    $request->search,
+
+                'from_date' =>
+                    $request->from_date,
+
+                'to_date' =>
+                    $request->to_date,
+
+                'per_page' =>
+                    $request->integer(
+                        'per_page',
+                        20
+                    ),
+            ];
+
+            $bills =
+                $this->billService->getBills(
+                    $filters
+                );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Bills retrieved successfully.',
+                'data' => $bills,
+            ]);
+
+        } catch (Exception $e) {
+
+            return response()->json([
+                'success' => false,
+                'message' =>
+                    'Failed to retrieve bills.',
+                'error' =>
+                    $e->getMessage(),
+            ], 500);
         }
-
-        // Filter by table
-        if ($request->filled('table_id')) {
-            $query->where(
-                'restaurant_table_id',
-                $request->table_id
-            );
-        }
-
-        // Search bill number
-        if ($request->filled('search')) {
-            $search = $request->search;
-
-            $query->where(
-                'bill_number',
-                'ILIKE',
-                "%{$search}%"
-            );
-        }
-
-        // Date range
-        if ($request->filled('from_date')) {
-            $query->whereDate(
-                'bill_date',
-                '>=',
-                $request->from_date
-            );
-        }
-
-        if ($request->filled('to_date')) {
-            $query->whereDate(
-                'bill_date',
-                '<=',
-                $request->to_date
-            );
-        }
-
-        $bills = $query->paginate(
-            $request->integer('per_page', 20)
-        );
-
-        return response()->json($bills);
     }
 
     /**
-     * Show a single bill.
+     * Display a single bill.
      */
     public function show(Bill $bill): JsonResponse
     {
-        $bill->load([
-            'table',
-            'order',
-            'items',
-        ]);
+        try {
 
-        return response()->json([
-            'bill' => $bill,
-        ]);
+            $bill =
+                $this->billService->getBill(
+                    $bill
+                );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Bill retrieved successfully.',
+                'data' => $bill,
+            ]);
+
+        } catch (Exception $e) {
+
+            return response()->json([
+                'success' => false,
+                'message' =>
+                    'Failed to retrieve bill.',
+                'error' =>
+                    $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
-     * Create a bill from an order.
+     * Create a new bill.
      */
     public function store(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'order_id' => [
-                'required',
-                'integer',
-                'exists:orders,id',
-            ],
+        try {
 
-            'discount' => [
-                'nullable',
-                'numeric',
-                'min:0',
-            ],
+            $validated = $request->validate([
+                'order_id' => [
+                    'required',
+                    'integer',
+                    'exists:orders,id',
+                ],
 
-            'tax' => [
-                'nullable',
-                'numeric',
-                'min:0',
-            ],
+                'discount' => [
+                    'nullable',
+                    'numeric',
+                    'min:0',
+                ],
 
-            'service_charge' => [
-                'nullable',
-                'numeric',
-                'min:0',
-            ],
+                'tax' => [
+                    'nullable',
+                    'numeric',
+                    'min:0',
+                ],
 
-            'payment_method' => [
-                'nullable',
-                'string',
-                'in:cash,card,esewa,khalti',
-            ],
+                'service_charge' => [
+                    'nullable',
+                    'numeric',
+                    'min:0',
+                ],
 
-            'paid_amount' => [
-                'nullable',
-                'numeric',
-                'min:0',
-            ],
+                'payment_method' => [
+                    'nullable',
+                    'string',
+                    'in:cash,card,esewa,khalti',
+                ],
 
-            'notes' => [
-                'nullable',
-                'string',
-            ],
-        ]);
+                'paid_amount' => [
+                    'nullable',
+                    'numeric',
+                    'min:0',
+                ],
 
-        $order = Order::with([
-            'items.menuItem',
-            'table',
-        ])->findOrFail($validated['order_id']);
-
-        // Don't create another bill for the same order
-        if ($order->bill()->exists()) {
-            return response()->json([
-                'message' => 'This order already has a bill.',
-            ], 422);
-        }
-
-        if ($order->status === 'cancelled') {
-            return response()->json([
-                'message' => 'Cancelled orders cannot be billed.',
-            ], 422);
-        }
-
-        if ($order->items->isEmpty()) {
-            return response()->json([
-                'message' => 'This order has no items.',
-            ], 422);
-        }
-
-        $discount = (float) ($validated['discount'] ?? 0);
-        $tax = (float) ($validated['tax'] ?? 0);
-        $serviceCharge = (float) (
-            $validated['service_charge'] ?? 0
-        );
-
-        $subtotal = $order->items->sum(function ($item) {
-            return (float) $item->quantity *
-                (float) $item->unit_price;
-        });
-
-        $total = $subtotal
-            - $discount
-            + $tax
-            + $serviceCharge;
-
-        if ($total < 0) {
-            $total = 0;
-        }
-
-        $paidAmount = (float) (
-            $validated['paid_amount'] ?? 0
-        );
-
-        if ($paidAmount > 0 && $paidAmount < $total) {
-            $paymentStatus = 'partial';
-        } elseif ($paidAmount >= $total && $total > 0) {
-            $paymentStatus = 'paid';
-        } else {
-            $paymentStatus = 'pending';
-        }
-
-        $changeAmount = max(
-            0,
-            $paidAmount - $total
-        );
-
-        $bill = DB::transaction(function () use (
-            $order,
-            $discount,
-            $tax,
-            $serviceCharge,
-            $subtotal,
-            $total,
-            $paidAmount,
-            $changeAmount,
-            $paymentStatus,
-            $validated
-        ) {
-            $bill = Bill::create([
-                'bill_number' => $this->generateBillNumber(),
-
-                'order_id' => $order->id,
-
-                'restaurant_table_id' =>
-                    $order->restaurant_table_id,
-
-                'bill_date' => now()->toDateString(),
-
-                'subtotal' => $subtotal,
-
-                'discount' => $discount,
-
-                'tax' => $tax,
-
-                'service_charge' => $serviceCharge,
-
-                'total' => $total,
-
-                'payment_method' =>
-                    $validated['payment_method'] ?? null,
-
-                'payment_status' => $paymentStatus,
-
-                'paid_amount' => $paidAmount,
-
-                'change_amount' => $changeAmount,
-
-                'notes' =>
-                    $validated['notes'] ?? null,
+                'notes' => [
+                    'nullable',
+                    'string',
+                ],
             ]);
 
-            foreach ($order->items as $item) {
-                $itemName = 'Menu Item';
+            $bill =
+                $this->billService->createBill(
+                    $validated
+                );
 
-                if ($item->menuItem) {
-                    $itemName =
-                        $item->menuItem->name;
-                }
+            return response()->json([
+                'success' => true,
+                'message' =>
+                    'Bill created successfully.',
+                'data' =>
+                    $bill->load([
+                        'table',
+                        'items',
+                        'order',
+                    ]),
+            ], 201);
 
-                $itemSubtotal =
-                    (float) $item->quantity *
-                    (float) $item->unit_price;
+        } catch (Exception $e) {
 
-                BillItem::create([
-                    'bill_id' => $bill->id,
-
-                    'menu_item_id' =>
-                        $item->menu_item_id,
-
-                    'item_name' => $itemName,
-
-                    'quantity' =>
-                        $item->quantity,
-
-                    'unit_price' =>
-                        $item->unit_price,
-
-                    'subtotal' =>
-                        $itemSubtotal,
-                ]);
-            }
-
-            // Only mark order paid if payment completed
-            if ($paymentStatus === 'paid') {
-                $order->markPaid();
-            }
-
-            return $bill;
-        });
-
-        $bill->load([
-            'table',
-            'items',
-            'order',
-        ]);
-
-        return response()->json([
-            'message' => 'Bill created successfully.',
-            'bill' => $bill,
-        ], 201);
+            return response()->json([
+                'success' => false,
+                'message' =>
+                    $e->getMessage(),
+            ], 422);
+        }
     }
 
     /**
-     * Pay an existing pending/partial bill.
+     * Pay an existing bill.
      */
     public function pay(
         Request $request,
         Bill $bill
     ): JsonResponse {
-        $validated = $request->validate([
-            'payment_method' => [
-                'required',
-                'string',
-                'in:cash,card,esewa,khalti',
-            ],
+        try {
 
-            'paid_amount' => [
-                'required',
-                'numeric',
-                'min:0',
-            ],
-        ]);
+            $validated = $request->validate([
+                'payment_method' => [
+                    'required',
+                    'string',
+                    'in:cash,card,esewa,khalti',
+                ],
 
-        $paidAmount =
-            (float) $validated['paid_amount'];
-
-        $total =
-            (float) $bill->total;
-
-        if ($paidAmount < $total) {
-            return response()->json([
-                'message' =>
-                    'Paid amount cannot be less than the bill total.',
-            ], 422);
-        }
-
-        $changeAmount =
-            $paidAmount - $total;
-
-        DB::transaction(function () use (
-            $bill,
-            $validated,
-            $paidAmount,
-            $changeAmount
-        ) {
-            $bill->update([
-                'payment_method' =>
-                    $validated['payment_method'],
-
-                'paid_amount' =>
-                    $paidAmount,
-
-                'change_amount' =>
-                    $changeAmount,
-
-                'payment_status' =>
-                    'paid',
+                'paid_amount' => [
+                    'required',
+                    'numeric',
+                    'min:0',
+                ],
             ]);
 
-            $bill->order->markPaid();
-        });
+            $bill =
+                $this->billService->payBill(
+                    $bill,
+                    $validated
+                );
 
-        $bill->load([
-            'table',
-            'items',
-            'order',
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' =>
+                    'Payment completed successfully.',
+                'data' => $bill,
+            ]);
 
-        return response()->json([
-            'message' => 'Payment completed successfully.',
-            'bill' => $bill,
-        ]);
+        } catch (Exception $e) {
+
+            return response()->json([
+                'success' => false,
+                'message' =>
+                    $e->getMessage(),
+            ], 422);
+        }
     }
 
     /**
@@ -373,50 +229,25 @@ class BillController extends Controller
      */
     public function destroy(Bill $bill): JsonResponse
     {
-        if ($bill->payment_status === 'paid') {
-            return response()->json([
-                'message' =>
-                    'Paid bills cannot be deleted.',
-            ], 422);
-        }
+        try {
 
-        $bill->delete();
-
-        return response()->json([
-            'message' => 'Bill deleted successfully.',
-        ]);
-    }
-
-    /**
-     * Generate bill number.
-     */
-    private function generateBillNumber(): string
-    {
-        $prefix = 'INV-' . now()->format('Ymd');
-
-        $lastBill = Bill::where(
-            'bill_number',
-            'like',
-            $prefix . '-%'
-        )
-            ->latest('id')
-            ->first();
-
-        if (!$lastBill) {
-            $number = 1;
-        } else {
-            $parts = explode(
-                '-',
-                $lastBill->bill_number
+            $this->billService->deleteBill(
+                $bill
             );
 
-            $number = ((int) end($parts)) + 1;
-        }
+            return response()->json([
+                'success' => true,
+                'message' =>
+                    'Bill deleted successfully.',
+            ]);
 
-        return sprintf(
-            '%s-%04d',
-            $prefix,
-            $number
-        );
+        } catch (Exception $e) {
+
+            return response()->json([
+                'success' => false,
+                'message' =>
+                    $e->getMessage(),
+            ], 422);
+        }
     }
 }
