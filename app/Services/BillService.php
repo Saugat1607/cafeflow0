@@ -386,4 +386,17 @@ class BillService
             $number
         );
     }
+
+    public function getUnbillRecentOrders(int $limit = 10)
+    {
+        return Order::with([
+            'items.menuItem',
+            'table',
+        ])
+        ->whereDoesntHave('bill')
+        ->where('status', '!=', 'cancelled')
+        ->latest('created_at')
+        ->limit($limit)
+        ->get();
+    }
 }

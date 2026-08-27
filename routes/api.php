@@ -33,6 +33,7 @@ Route::delete('/orders/{order}', [OrderController::class, 'destroy']);
 
 //bill
 Route::get('/bills', [BillController::class, 'index']);
+Route::get('\bills\recent-orders', [BillController::class, 'recentorders'] );
 Route::post('/bills', [BillController::class, 'store']);
 Route::get('/bills/{bill}', [BillController::class, 'show']);
 Route::post('/bills/{bill}/pay', [BillController::class, 'pay']);

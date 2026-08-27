@@ -250,4 +250,11 @@ class BillController extends Controller
             ], 422);
         }
     }
+
+public function recentOrders()    {
+        return response()->json([
+            'success' => true,
+            'data' =>$this->billService->getUnbillRecentOrders(10),
+        ]);
+    }
 }
