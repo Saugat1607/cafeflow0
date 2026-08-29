@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\MenuItemController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\RestaurantTableController;
@@ -38,4 +39,10 @@ Route::post('/bills', [BillController::class, 'store']);
 Route::get('/bills/{bill}', [BillController::class, 'show']);
 Route::post('/bills/{bill}/pay', [BillController::class, 'pay']);
 Route::delete('/bills/{bill}', [BillController::class, 'destroy']);
+
+//expense
+Route::apiResource('expenses' , ExpenseController::class);
+
+Route::get('expense-report/daily-total', [ExpenseController::class, 'dailyTotal']);
+Route::get('expense-report/category-totals', [ExpenseController::class, 'categoryTotals']);
 });
