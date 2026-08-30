@@ -10,6 +10,8 @@ class Expense extends Model
 {
     use HasFactory;
 
+    protected $table = 'expenses';
+
     protected $fillable = [
         'title',
         'description',
@@ -17,8 +19,9 @@ class Expense extends Model
         'category',
         'expense_date',
         'payment_method',
-        'created_by'
+        'created_by',
     ];
+
     protected $casts = [
         'amount' => 'decimal:2',
         'expense_date' => 'date',
@@ -29,3 +32,4 @@ class Expense extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 }
+
