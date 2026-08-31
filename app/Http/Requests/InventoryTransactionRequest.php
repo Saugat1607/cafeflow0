@@ -27,15 +27,6 @@ class InventoryTransactionRequest extends FormRequest
                 'exists:inventory_items,id',
             ],
 
-            'type' => [
-                'required',
-                Rule::in([
-                    'in',
-                    'out',
-                    'adjustment',
-                ]),
-            ],
-
             'quantity' => [
                 'required',
                 'numeric',

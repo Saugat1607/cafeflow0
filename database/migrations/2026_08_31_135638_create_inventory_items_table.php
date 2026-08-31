@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('category')->default('Other');
             $table->string('unit')->default('pcs');
             $table->decimal('current_stock', 12, 3)->default(0);
-            $table->decimal('minimun_stock', 12, 3)->default(0);
+            $table->decimal('minimum_stock', 12, 3)->default(0);
             $table->decimal('cost_per_unit', 12, 3)->default(0);
             $table->string('supplier')->nullable();
             $table->string('description')->nullable();
