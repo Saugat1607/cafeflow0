@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\InventoryTransactionController;
 use App\Http\Controllers\Api\MenuItemController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\RestaurantTableController;
+use App\Http\Controllers\Api\InvoiceController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -122,4 +123,5 @@ Route::get('/inventory/statistics', [
         InventoryTransactionController::class,
         'destroy'
     ]);
+Route::apiResource('invoices', InvoiceController ::class);;
 });
