@@ -6,7 +6,6 @@ use App\Models\Staff;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class StaffService
 {
@@ -27,7 +26,7 @@ class StaffService
     {
         return DB::transaction(function () use ($data) {
 
-            // Create login account
+            // Create login account in users table
             $user = User::create([
                 'name' => $data['name'],
                 'email' => $data['email'],
@@ -37,7 +36,7 @@ class StaffService
             // Generate staff code
             $staffCode = $this->generateStaffCode();
 
-            // Create staff profile
+            // Create staff record
             $staff = Staff::create([
                 'user_id' => $user->id,
                 'staff_code' => $staffCode,
@@ -65,7 +64,7 @@ class StaffService
     {
         return DB::transaction(function () use ($id, $data) {
 
-            $staff = Staff::findOrFail($id);
+            $staff = Staff::with('user')->findOrFail($id);
 
             // Update user information
             $userData = [];
@@ -120,10 +119,10 @@ class StaffService
 
             $user = $staff->user;
 
-            // Delete staff profile
+            // Delete staff record
             $staff->delete();
 
-            // Delete login account
+            // Delete associated login account
             if ($user) {
                 $user->delete();
             }
@@ -133,12 +132,11 @@ class StaffService
     }
 
     /**
-     * Generate a unique staff code.
+     * Generate unique staff code.
      *
      * Example:
      * CF-STF-001
      * CF-STF-002
-     * CF-STF-003
      */
     private function generateStaffCode(): string
     {

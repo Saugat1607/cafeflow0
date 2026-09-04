@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\MenuItemController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\RestaurantTableController;
 use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\StaffController;
 use Illuminate\Support\Facades\Route;
 
@@ -128,4 +129,22 @@ Route::get('/inventory/statistics', [
 Route::apiResource('invoices', InvoiceController ::class);;
 
 Route::apiResource('staff', StaffController::class);
+
+Route::prefix('reports')->group(function () {
+
+    // Today's report
+    Route::get('/today', [ReportController::class, 'today']);
+
+    // Report for specific date
+    Route::get('/date/{date}', [ReportController::class, 'show']);
+
+    // Report history
+    Route::get('/history', [ReportController::class, 'history']);
+
+    // Generate/update one report
+    Route::post('/generate', [ReportController::class, 'generate']);
+
+    // Generate reports for a date range
+    Route::post('/generate-range', [ReportController::class, 'generateRange']);
+});
 });
