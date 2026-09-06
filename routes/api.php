@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillController;
+use App\Http\Controllers\Api\DailyBalanceController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\InventoryController;
@@ -147,4 +148,6 @@ Route::prefix('reports')->group(function () {
     // Generate reports for a date range
     Route::post('/generate-range', [ReportController::class, 'generateRange']);
 });
+
+Route::get('/daily-balance', [DailyBalanceController::class, 'index']);
 });
